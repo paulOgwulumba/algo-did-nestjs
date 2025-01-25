@@ -21,9 +21,11 @@
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.0.3",
+    "algosdk": "^2.7.0",
     "class-transformer": "^0.5.1",
     "dotenv": "^16.4.7",
     "reflect-metadata": "^0.2.2",
