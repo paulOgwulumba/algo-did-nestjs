@@ -1,26 +1,35 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Injectable,
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { Algodv2 } from 'algosdk';
+import { Algodv2, Kmd, mnemonicToSecretKey } from 'algosdk';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AlgorandService {
   algodClient: Algodv2;
+  kmdClient: Kmd;
+
   private readonly logger = new Logger(AlgorandService.name);
 
   constructor(private readonly configService: ConfigService) {
-    const server =
+    // Initialize Algod client
+    const algodServer =
       this.configService.get<string>('ALGOD_SERVER') ||
       'https://testnet-api.algonode.cloud';
-    const token = {
-      'X-API-Key': this.configService.get<string>('ALGOD_TOKEN'),
-    };
-    const port = this.configService.get<string>('ALGOD_PORT');
+    const algodToken = this.configService.get<string>('ALGOD_TOKEN');
+    const algodPort = this.configService.get<string>('ALGOD_PORT');
+    this.algodClient = new Algodv2(algodToken, algodServer, algodPort);
 
-    this.algodClient = new Algodv2(token, server, port);
+    // Initialize Kmd client if credentials are provided
+    const kmdServer = this.configService.get<string>('KMD_SERVER');
+    const kmdToken = this.configService.get<string>('KMD_TOKEN');
+    const kmdPort = this.configService.get<string>('KMD_PORT');
+
+    this.kmdClient = new Kmd(kmdToken, kmdServer, kmdPort);
   }
 
   async getAccountInformation(address: string) {
@@ -37,18 +46,28 @@ export class AlgorandService {
     }
   }
 
-  async getTxnGroupInformation(txnGroup: string) {
-    // console.log(await this.algodClient.);
+  async listWallets() {
     try {
-      const txnGroupInfo = await this.algodClient
-        .getLedgerStateDeltaForTransactionGroup(txnGroup)
-        .do();
-
-      return txnGroupInfo;
+      const wallets = await this.kmdClient.listWallets();
+      return wallets;
     } catch (error) {
-      this.logger.error(
-        `Error retrieving transaction group information for group '${txnGroup}': ${error}`,
-      );
+      this.logger.error(`Error listing KMD wallets: ${error}`);
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  loadMasterWallet() {
+    return this.getWalletByMnemonic(
+      this.configService.get<string>('MASTER_MNEMONIC'),
+    );
+  }
+
+  getWalletByMnemonic(mnemonic: string) {
+    try {
+      const wallet = mnemonicToSecretKey(mnemonic);
+      return wallet;
+    } catch (error) {
+      this.logger.error(`Error getting wallet: ${error}`);
       throw new InternalServerErrorException(error);
     }
   }

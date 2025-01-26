@@ -5,13 +5,8 @@ import { AppService } from './app.service';
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  @Get()
-  getHello(): string {
-    return this.appService.getHello();
-  }
-
-  @Get('txn-group-info/:id')
-  getGroupInfo(@Param('id') id: string) {
-    return this.appService.getTransactionGroupInfo(id);
+  @Get('account-info/:address')
+  getAccountInfo(@Param('address') address: string) {
+    return this.appService.getAccountInformation(address);
   }
 }
