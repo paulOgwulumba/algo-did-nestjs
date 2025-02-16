@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { AlgoDidService } from './algo-did.service';
 import { ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
-
+import { DidDocument } from 'libs/interfaces/did.interface';
 @ApiTags('AlgoDid')
 @Controller('algo-did')
 export class AlgoDidController {
@@ -30,7 +30,7 @@ export class AlgoDidController {
   })
   @Get('resolve-did-external/:did')
   resolveDidExternal(@Param('did') did: string) {
-    return this.algoDidService.resolveDid(did);
+    return this.algoDidService.resolveDidByApiCall(did);
   }
 
   @ApiOperation({
@@ -48,7 +48,7 @@ export class AlgoDidController {
   })
   @Patch('update-did/:did')
   @ApiBody({ type: Object })
-  updateDid(@Param('did') did: string, @Body() body: any) {
+  updateDid(@Param('did') did: string, @Body() body: DidDocument) {
     return this.algoDidService.updateDidDocument(did, body);
   }
 

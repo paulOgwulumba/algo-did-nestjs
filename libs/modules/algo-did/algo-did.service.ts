@@ -1,8 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, Logger } from '@nestjs/common';
 import { AlgorandService } from '../algorand/algorand.service';
 import { AlgoDidClient } from 'libs/artifacts/algo-did-client';
@@ -16,6 +11,7 @@ import { MassUploadChunksDto, UploadDidBoxDto } from 'libs/dto/did.dto';
 import { resolveDidIntoComponents } from 'libs/utils/resolve-did-into-components';
 import { AlgoDIDStatus } from 'libs/enums/algo-did.enum';
 import { ConfigService } from '@nestjs/config';
+import { UniResolverResponse } from 'libs/interfaces/uni-resolver-response.interface';
 
 @Injectable()
 export class AlgoDidService {
@@ -58,7 +54,7 @@ export class AlgoDidService {
     }
   }
 
-  createDidDocument(appId: number, didOwnerAddress: string) {
+  private createDidDocument(appId: number, didOwnerAddress: string) {
     this.logger.log(`Creating DID document for address: ${didOwnerAddress}`);
 
     // Get address public key
@@ -82,9 +78,9 @@ export class AlgoDidService {
           id: `${did}#master`,
           type: 'Ed25519VerificationKey2020',
           controller: did,
+          publicKeyMultibase: publicKeyHex,
         },
       ],
-      authentication: [`${did}#master`],
     };
 
     this.logger.log('DID document created successfully');
@@ -92,7 +88,7 @@ export class AlgoDidService {
     return didDocument;
   }
 
-  async startDidDocumentUpload(
+  private async startDidDocumentUpload(
     appId: number,
     didOwnerAddress: string,
     didDocument: DidDocument,
@@ -158,7 +154,7 @@ export class AlgoDidService {
     }
   }
 
-  async uploadDidDocument(
+  private async uploadDidDocument(
     appId: number,
     didOwnerAddress: string,
     didDocument: DidDocument,
@@ -275,7 +271,7 @@ export class AlgoDidService {
     }
   }
 
-  async uploadDidBox(dto: UploadDidBoxDto) {
+  private async uploadDidBox(dto: UploadDidBoxDto) {
     const {
       box,
       boxIndexOffset,
@@ -301,7 +297,9 @@ export class AlgoDidService {
       appIndex: Number(appId),
       name: algosdk.encodeUint64(boxIndex),
     };
-    const boxes: algosdk.BoxReference[] = new Array(7).fill(boxRef);
+    const boxes: algosdk.BoxReference[] = new Array(7).fill(
+      boxRef,
+    ) as algosdk.BoxReference[];
     boxes.push({ appIndex: Number(appId), name: publicKey });
 
     const firstGroup = chunks.slice(0, 8);
@@ -336,7 +334,7 @@ export class AlgoDidService {
     return [...res.txIDs, ...res2.txIDs];
   }
 
-  async massUploadChunks(dto: MassUploadChunksDto) {
+  private async massUploadChunks(dto: MassUploadChunksDto) {
     const {
       chunks,
       boxIndex,
@@ -360,7 +358,7 @@ export class AlgoDidService {
 
     chunks.forEach((chunk, index) => {
       atc.addMethodCall({
-        method: abiMethod!,
+        method: abiMethod,
         methodArgs: [
           publicKey,
           boxIndex,
@@ -378,7 +376,10 @@ export class AlgoDidService {
     return atc.execute(this.algorandService.algodClient, 3);
   }
 
-  async finishDidDocumentUpload(appId: number, didOwnerAddress: string) {
+  private async finishDidDocumentUpload(
+    appId: number,
+    didOwnerAddress: string,
+  ) {
     this.logger.log('Finishing DID document upload...');
 
     const sender = this.algorandService.loadMasterWallet();
@@ -435,7 +436,7 @@ export class AlgoDidService {
     return didDocument;
   }
 
-  async getDidMetaData(appId: number, address: string) {
+  private async getDidMetaData(appId: number, address: string) {
     this.logger.log(`Getting DID metadata for app id: ${appId}`);
 
     const sender = this.algorandService.loadMasterWallet();
@@ -466,7 +467,10 @@ export class AlgoDidService {
     return metadata;
   }
 
-  async prepareForDocumentDelete(appId: number, didOwnerAddress: string) {
+  private async prepareForDocumentDelete(
+    appId: number,
+    didOwnerAddress: string,
+  ) {
     this.logger.log(
       `Preparing for DID document deletion for address '${didOwnerAddress}' and app id '${appId}'`,
     );
@@ -509,7 +513,7 @@ export class AlgoDidService {
     }
   }
 
-  async finishDocumentDelete(appId: number, didOwnerAddress: string) {
+  private async finishDocumentDelete(appId: number, didOwnerAddress: string) {
     this.logger.log(
       `Deleting DID document for address '${didOwnerAddress}' and app id '${appId}'`,
     );
@@ -549,7 +553,7 @@ export class AlgoDidService {
 
         atomicTxnComposer.addMethodCall({
           appID: Number(appId),
-          method: appClient.appClient.getABIMethod('deleteData')!,
+          method: appClient.appClient.getABIMethod('deleteData'),
           methodArgs: [publicKey, BigInt(boxIndex)],
           boxes: [
             { appIndex: Number(appId), name: publicKey },
@@ -563,7 +567,7 @@ export class AlgoDidService {
         Array.from({ length: 4 }).forEach(() => {
           atomicTxnComposer.addMethodCall({
             appID: Number(appId),
-            method: appClient.appClient.getABIMethod('dummy')!,
+            method: appClient.appClient.getABIMethod('dummy'),
             methodArgs: [],
             boxes: Array.from({ length: 8 }).map(() => boxIndexRef),
             suggestedParams,
@@ -614,7 +618,7 @@ export class AlgoDidService {
     return res;
   }
 
-  async resolveDidByAppId(appId: number, address: string) {
+  private async resolveDidByAppId(appId: number, address: string) {
     this.logger.log(`Resolving DID by app id: ${appId}`);
 
     const sender = this.algorandService.loadMasterWallet();
@@ -669,13 +673,13 @@ export class AlgoDidService {
     return this.resolveDidByAppId(Number(appId), address);
   }
 
-  async resolveDidByApiCall(did: string) {
+  async resolveDidByApiCall(did: string): Promise<UniResolverResponse> {
     this.logger.log(`Resolving DID by API call: ${did}`);
     const headers = {
       'Content-Type': 'application/json',
     };
     return axios
-      .get(
+      .get<UniResolverResponse>(
         `https://dev.uniresolver.io/1.0/identifiers/${encodeURIComponent(did)}`,
         { headers },
       )
@@ -686,7 +690,7 @@ export class AlgoDidService {
       });
   }
 
-  async updateDidDocument(did: string, didDocument: any) {
+  async updateDidDocument(did: string, didDocument: DidDocument) {
     this.logger.log(`Updating DID document for DID: ${did}`);
 
     const { address, appId } = resolveDidIntoComponents(did);
